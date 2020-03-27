@@ -1,0 +1,24 @@
+<persistence>
+
+    <persistence-unit name="org.jbpm.logging.jta" transaction-type="JTA">
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+        <jta-data-source>java:jboss/datasources/AuditDS</jta-data-source>
+
+        <class>org.jbpm.process.audit.ProcessInstanceLog</class>
+        <class>org.jbpm.process.audit.NodeInstanceLog</class>
+        <class>org.jbpm.process.audit.VariableInstanceLog</class>
+    
+        <properties>
+          <property name="hibernate.max_fetch_depth" value="3" />
+          <property name="hibernate.hbm2ddl.auto" value="update" />
+          <property name="hibernate.show_sql" value="false" />
+          <!-- <property name="hibernate.dialect" value="${maven.hibernate.dialect}" /> -->
+    
+          <!-- BZ 841786: AS7/EAP 6/Hib 4 uses new (sequence) generators which seem to cause problems -->
+          <property name="hibernate.id.new_generator_mappings" value="false" />
+          <property name="hibernate.transaction.jta.platform" value="org.hibernate.service.jta.platform.internal.JBossStandAloneJtaPlatform" />
+          <property name="hibernate.connection.handling_mode" value="DELAYED_ACQUISITION_AND_RELEASE_AFTER_TRANSACTION"/>
+        </properties>
+      </persistence-unit>
+    
+</persistence>

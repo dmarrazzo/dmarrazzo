@@ -14,7 +14,7 @@
     <ba.version>7.7.0.redhat-00002</ba.version>
     <version.org.kie>7.33.0.Final-redhat-00002</version.org.kie>
   </properties>
-  
+
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -28,6 +28,7 @@
   </dependencyManagement>
 
   <dependencies>
+    <!-- jbpm dep -->
     <dependency>
       <groupId>org.jbpm</groupId>
       <artifactId>jbpm-persistence-api</artifactId>
@@ -36,6 +37,13 @@
     <dependency>
       <groupId>org.jbpm</groupId>
       <artifactId>jbpm-audit</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <!-- other -->
+    <dependency>
+      <groupId>org.hibernate</groupId>
+      <artifactId>hibernate-core</artifactId>
+      <version>5.3.7.Final-redhat-00001</version>
       <scope>provided</scope>
     </dependency>
     <!-- unit test -->
