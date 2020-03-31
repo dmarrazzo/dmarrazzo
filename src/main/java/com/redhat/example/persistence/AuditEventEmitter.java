@@ -2,6 +2,7 @@ package com.redhat.example.persistence;
 
 import java.util.Collection;
 import java.util.Date;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -9,6 +10,7 @@ import javax.naming.InitialContext;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.EntityTransaction;
+import javax.persistence.Query;
 import javax.transaction.Transaction;
 import javax.transaction.TransactionManager;
 
@@ -22,6 +24,7 @@ import org.jbpm.persistence.api.integration.model.CaseInstanceView;
 import org.jbpm.persistence.api.integration.model.ProcessInstanceView;
 import org.jbpm.persistence.api.integration.model.TaskInstanceView;
 import org.jbpm.process.audit.ProcessInstanceLog;
+import org.jbpm.ruleflow.instance.RuleFlowProcessInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,16 +81,37 @@ public class AuditEventEmitter implements EventEmitter {
 
     private void processEvent(ProcessInstanceView processInstanceView) {
         try {
-            // processInstanceView.getState()
-            
             EntityManager em = emf.createEntityManager();
 
             EntityTransaction tx = em.getTransaction();
             tx.begin();
-            ProcessInstanceLog processInstanceLog = em.find(ProcessInstanceLog.class, processInstanceView.getId());
-            if(processInstanceLog == null) {
+            Query query = em.createQuery(
+                    "select pil from ProcessInstanceLog pil where pil.processInstanceId = :processInstanceId",
+                    ProcessInstanceLog.class);
+            query.setParameter("processInstanceId", processInstanceView.getId());
+            Optional<?> first = query.getResultStream()
+                                                      .findFirst();
+            ProcessInstanceLog processInstanceLog = null;
+
+            if (first.isPresent()) {
+                processInstanceLog = (ProcessInstanceLog) first.get();
+
+                Date start = processInstanceLog.getStart();
+                Date end = new Date();
+
+                long duration = end.getTime() - start.getTime();
+
+                processInstanceLog.setDuration(duration);
+                processInstanceLog.setEnd(end);
+                                
+                if (processInstanceView.getSource() instanceof RuleFlowProcessInstance) {
+                    RuleFlowProcessInstance processInstance = (RuleFlowProcessInstance) processInstanceView.getSource();
+                    processInstanceLog.setOutcome(processInstance.getOutcome());
+                }
+            } else {
                 processInstanceLog = new ProcessInstanceLog(processInstanceView.getId(),
                                                             processInstanceView.getProcessId());
+
                 processInstanceLog.setCorrelationKey(processInstanceView.getCorrelationKey());
                 processInstanceLog.setParentProcessInstanceId(processInstanceView.getParentId());
                 processInstanceLog.setProcessInstanceDescription(processInstanceView.getProcessInstanceDescription());
@@ -96,20 +120,22 @@ public class AuditEventEmitter implements EventEmitter {
                 processInstanceLog.setStatus(processInstanceView.getState());
                 processInstanceLog.setExternalId(processInstanceView.getContainerId());
                 processInstanceLog.setIdentity(processInstanceView.getInitiator());
-            } else {
-                Date start = processInstanceLog.getStart();
-                Date end = new Date();
-                //end.
-                processInstanceLog.setEnd(end);
+
+                if (processInstanceView.getSource() instanceof RuleFlowProcessInstance) {
+                    RuleFlowProcessInstance processInstance = (RuleFlowProcessInstance) processInstanceView.getSource();
+                    processInstanceLog.setSlaDueDate(processInstance.getSlaDueDate());
+                    processInstanceLog.setSlaCompliance(processInstance.getSlaCompliance());
+                    processInstanceLog.setProcessType(processInstance.getRuleFlowProcess().getProcessType());   
+                }
             }
 
             processInstanceLog.setStatus(processInstanceView.getState());
-            //processInstanceLog.set(processInstanceView.getSource().getProcess().);
+
             em.persist(processInstanceLog);
             tx.commit();
         } catch (Exception e) {
             logger.error("Exception {}", e);
-        } 
+        }
     }
 
     @Override
